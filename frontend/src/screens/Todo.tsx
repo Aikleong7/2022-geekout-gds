@@ -20,22 +20,25 @@ export type TodoItemProps = {
 
 function TodoItem(props: TodoItemProps) {
   /* create state here */
-
+  const [done, setDone] = useState(props.done);
   const updateTodoItem = useCallback(async () => {
     await axios.put(`${CONFIG.API_ENDPOINT}/todos/${props.id}`, {
       id: props.id,
       description: props.description,
+      done: done,
       /* persist the state of the todo item */
     });
-  }, [props.description, props.id]);
+  }, [props.description, props.id, done]);
 
   useEffect(() => {
     /* mark the todo when done (as a dependency) changes */
-  }, [props.description, updateTodoItem]);
+    console.log(props.description, 'is marked as ', done ? 'done' : 'undone');
+    updateTodoItem();
+  }, [props.description, done, updateTodoItem]);
 
   return (<>
     <tr>
-      <td>{/* insert checkbox here */}</td>
+      <td>{<input type="checkbox" checked={done} onChange={(event) => setDone(event.currentTarget.checked)}></input>}</td>
       <td width={'100%'}>{props.description}</td>
     </tr>
   </>
@@ -58,6 +61,13 @@ function Todo(props: TodoProps) {
   const onRefreshClicked = useCallback(async () => {
     console.log('Refresh button clicked');
     /* refresh todos here */
+    setIsRefresh(true);
+    setTimeout(async () => {
+      await populateTodos();
+      setIsRefresh(false);
+    }, 400);
+    
+    console.log('todolist updated');
   }, [populateTodos]);
 
   useEffect(() => {
@@ -65,14 +75,21 @@ function Todo(props: TodoProps) {
   }, [onRefreshClicked]);
 
   async function submitNewTodo() {
-    /* validate todos here */
-    const newTodo = {
+    if (newTodoDescription !== "") {
+      const newTodo = {
       description: newTodoDescription,
-    };
-    await axios.post(`/api/todos`, newTodo);
-    await populateTodos();
-    setNewTodoDescription('');
+      };
+      await axios.post(`/api/todos`, newTodo);
+      await populateTodos();
+      setNewTodoDescription('');
   }
+  else{
+    alert("Cannot have empty list item");
+  }
+}
+}
+
+  const [isRefresh, setIsRefresh] = useState(false);
 
   return (
     <Container>
@@ -92,13 +109,15 @@ function Todo(props: TodoProps) {
                   <Row>
                     <Col is={10}>
                       <input className="input" id='newTodoDescription' type='text' value={newTodoDescription}
-                        onChange={(event) => { setNewTodoDescription(event.currentTarget.value) }} />
+                        onChange={(event) => { setNewTodoDescription(event.currentTarget.value) }} >
                     </Col>
                     <Col>
                       <Button isPrimary isLoading={false}>Submit</Button>
                     </Col>
                     <Col>
-                      {/* insert button here */}
+                      {<Button type="button" isOutline isLoading={isRefresh} onClick={onRefreshClicked}>
+                            <span className='sgds-icon sgds-icon-refresh' />
+                          </Button>}
                     </Col>
                   </Row>
                 </div>
@@ -110,7 +129,7 @@ function Todo(props: TodoProps) {
               <thead><tr><th>Done</th><th>Description</th></tr></thead>
               <tbody>
                 {
-                  Object.keys(todoItems).map((item) => (<TodoItem key={todoItems[item].id} {...todoItems[item]} />))
+                  Object.keys(todoItems).map((item) => (<TodoItem key={todoItems[item].id} {...todoItems[item]}/>))
                 }
               </tbody>
             </Table>
